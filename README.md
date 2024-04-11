@@ -1,5 +1,7 @@
 如果你已经安装了 Windows，也无需重新安装，[看这里](#WHAT-IF)
 
+如果你已经制作了 Windows 安装盘，也无需重新制作，[看这里](#WHAT-IF)
+
 ## 纯净安装盘制作步骤
 
 注意要用 CMD 而不是 PowerShell
@@ -264,3 +266,37 @@ reg unload HKLM\zSYSTEM >nul 2>&1
 删除不需要的软件包
 
 `dism /Online /Remove-ProvisionedAppxPackage /PackageName:[APPX name]`
+
+在安装官方版的时候受限制？
+
+「不满足运行 Win11 的硬件要求」：
+
+`Shift+F10`
+
+`regedit`
+
+在 HKEY_LOCAL_MACHINE\SYSTEM\Setup\LabConfig\
+
+新增 DWORD BypassTPMCheck = 1
+
+新增 DWORD BypassSecureBootCheck = 1
+
+新增 DWORD BypassRAMCheck = 1
+
+新增 DWORD BypassCPUCheck = 1
+
+关闭，返回上一步，就可以继续安装
+
+「不联网登录就不让你用」：
+
+`Shift+F10`
+
+`oobe\bypassnro`
+
+自动重启后点击 我没有 Internet
+
+## 只需要绕过限制
+
+考虑使用 Rufus 制作安装盘
+
+`choco install rufus -y` or `winget install -i Rufus.Rufus`
