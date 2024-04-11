@@ -257,7 +257,7 @@ reg unload HKLM\zSYSTEM >nul 2>&1
 
 ## WHAT-IF
 
-已经安装了官方版？
+**已经安装了官方版？**
 
 查看本机安装的 Appx 包
 
@@ -267,7 +267,7 @@ reg unload HKLM\zSYSTEM >nul 2>&1
 
 `dism /Online /Remove-ProvisionedAppxPackage /PackageName:[APPX name]`
 
-在安装官方版的时候受限制？
+**在安装官方版的时候受限制？**
 
 「不满足运行 Win11 的硬件要求」：
 
@@ -277,13 +277,13 @@ reg unload HKLM\zSYSTEM >nul 2>&1
 
 在 HKEY_LOCAL_MACHINE\SYSTEM\Setup\LabConfig\
 
-新增 DWORD BypassTPMCheck = 1
+新增 DWORD `BypassTPMCheck` = 1
 
-新增 DWORD BypassSecureBootCheck = 1
+新增 DWORD `BypassSecureBootCheck` = 1
 
-新增 DWORD BypassRAMCheck = 1
+新增 DWORD `BypassRAMCheck` = 1
 
-新增 DWORD BypassCPUCheck = 1
+新增 DWORD `BypassCPUCheck` = 1
 
 关闭，返回上一步，就可以继续安装
 
