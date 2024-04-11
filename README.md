@@ -4,9 +4,7 @@
 
 注意要用 CMD 而不是 PowerShell
 
-首先用`Media Creation Tool`下载官方安装镜像
-
-[Windows 11](https://www.microsoft.com/zh-cn/software-download/windows11)  or  [Windows 10](https://www.microsoft.com/zh-cn/software-download/windows10)
+首先用`Media Creation Tool`下载[官方安装镜像](https://www.microsoft.com/zh-cn/software-download/windows11)
 
 右键挂载官方镜像 ISO 文件
 
