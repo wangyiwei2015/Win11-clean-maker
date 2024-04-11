@@ -1,60 +1,246 @@
-# tiny11builder
+用Media Creation Tool下载官方安装镜像
 
-Scripts to build a trimmed-down Windows 11 image.
+挂载官方镜像ISO文件
 
-This is a script to automate the build of a streamlined Windows 11 image, similar to tiny11.
-My main goal is to use only Microsoft utilities like DISM, and nothing external. The only executable included is oscdimg.exe, which is provided in the Windows ADK and it is used to create bootable ISO images. Also included is an unattended answer file, which is used to bypass the MS account on OOBE and to deploy the image with the /compact flag.
-It's open-source, so feel free to add or remove anything you want! Feedback is also much appreciated.
+### 准备工作
 
-As of now, only build 22621.525 (the one that can be downloaded from the Microsoft website), 22621.1265 (the latest public build) and 25300 (latest Insider build as of now) are supported.
+设定临时目录
 
-Instructions:
+`set "MNT=D:\ISOTemp"`
 
-1. Download Windows 11 22621.1265 from UUPDump or 22621.525 or 25300 from the Microsoft website (<https://www.microsoft.com/software-download/windows11>)
-2. Mount the downloaded ISO image using Windows Explorer.
-3. For .1265, run tiny11 creator.bat as administrator. For .525 or 25300, use the aptly-named script (also as administrator).
-4. Select the drive letter where the image is mounted (only the letter, no colon (:))
-5. Select the SKU that you want the image to be based.
-6. Sit back and relax :)
-7. When the image is completed, you will see it in the folder where the script was extracted, with the name tiny11.iso
+`set "SCR=D:\scratch"`
 
-What is removed:
-Clipchamp,
-News,
-Weather,
-Xbox (although Xbox Identity provider is still here, so it should be possible to be reinstalled with no issues),
-GetHelp,
-GetStarted,
-Office Hub,
-Solitaire,
-PeopleApp,
-PowerAutomate,
-ToDo,
-Alarms,
-Mail and Calendar,
-Feedback Hub,
-Maps,
-Sound Recorder,
-Your Phone,
-Media Player,
-QuickAssist,
-Internet Explorer,
-LA57 support,
-OCR for en-us,
-Speech support,
-TTS for en-us,
-Media Player Legacy,
-Tablet PC Math,
-Wallpapers,
-Edge,
-OneDrive
+`md %MNT%`
 
-Known issues:
+`md %SCR%`
 
-1. Microsoft Teams (personal) and Cortana are still here. If you find a way to remove them before I find one, feel free to help!
-2. Although Edge is removed, the icon and a ghost of its taskbar pin are still available. Also, there are some remnants in the Settings. But the app in itself is deleted.
-3. The script is rather inflexible, as in only the builds specified can be modified. This is because with each new build Microsoft also updates the inbox apps included. If one tries to use other builds, it will work with varying degrees of success, but some things like the removal of Edge and OneDrive as well as bypassing system requirements or other patches will always be applied.
-4. Only en-us x64 is supported as of now. This can be easily fixable by the end user, just by replacing every instance of en-us with the language needed (like ro-RO and so on), and every x64 instance with arm64.
+复制到临时目录
 
-And that's pretty much it for now!
-Thanks for trying it and let me know how you like it!
+`xcopy.exe /E /I /H /R /Y /J %挂载的镜像分区:% c:\tiny11 >nul`
+
+### 挂载WIM用于清理
+
+查看WIM信息
+
+`dism /Get-WimInfo /wimfile:%MNT%\sources\install.wim`
+
+`dism /mount-image /imagefile:%MNT%\sources\install.wim /index:%安装的版本的序号% /mountdir:%SCR%`
+
+如果不存在，则可能是ESD，需要转换
+
+查看ESD信息
+
+`dism /Get-WimInfo /wimfile:%MNT%\sources\install.esd`
+
+转换为WIM
+
+`dism /Export-Image /SourceImageFile:%MNT%\sources\install.esd /SourceIndex:%安装的版本的序号% /DestinationImageFile:%MNT%\sources\install-src.wim /Compress:Max /CheckIntegrity`
+
+检查转换后的WIM
+
+`dism /Get-WimInfo /wimfile:%MNT%\sources\install-src.wim`
+
+`dism /mount-image /imagefile:%MNT%\sources\install-src.wim /index:1 /mountdir:%SCR%`
+
+### 清洗WIM安装镜像
+
+获取预安装的软件包列表
+
+`dism /image:%SCR% /Get-Packages`
+
+按需删除，使用 `dism /image:%SCR% /Remove-ProvisionedAppxPackage /PackageName:[包名称]`
+
+以下常见的包名，来自 ntdevlabs/tiny11builder.git
+
+```batch
+echo Removing Clipchamp...
+dism /image:%SCR% /Remove-ProvisionedAppxPackage /PackageName:Clipchamp.Clipchamp_2.2.8.0_neutral_~_yxz26nhyzhsrt 
+echo Removing News...
+dism /image:%SCR% /Remove-ProvisionedAppxPackage /PackageName:Microsoft.BingNews_4.2.27001.0_neutral_~_8wekyb3d8bbwe
+echo Removing Weather...
+dism /image:%SCR% /Remove-ProvisionedAppxPackage /PackageName:Microsoft.BingWeather_4.53.33420.0_neutral_~_8wekyb3d8bbwe
+echo Removing Xbox...
+dism /image:%SCR% /Remove-ProvisionedAppxPackage /PackageName:Microsoft.GamingApp_2021.427.138.0_neutral_~_8wekyb3d8bbwe
+echo Removing GetHelp...
+dism /image:%SCR% /Remove-ProvisionedAppxPackage /PackageName:Microsoft.GetHelp_10.2201.421.0_neutral_~_8wekyb3d8bbwe
+echo Removing GetStarted...
+dism /image:%SCR% /Remove-ProvisionedAppxPackage /PackageName:Microsoft.Getstarted_2021.2204.1.0_neutral_~_8wekyb3d8bbwe
+echo Removing Office Hub...
+dism /image:%SCR% /Remove-ProvisionedAppxPackage /PackageName:Microsoft.MicrosoftOfficeHub_18.2204.1141.0_neutral_~_8wekyb3d8bbwe
+echo Removing Solitaire...
+dism /image:%SCR% /Remove-ProvisionedAppxPackage /PackageName:Microsoft.MicrosoftSolitaireCollection_4.12.3171.0_neutral_~_8wekyb3d8bbwe
+echo Removing PeopleApp...
+dism /image:%SCR% /Remove-ProvisionedAppxPackage /PackageName:Microsoft.People_2020.901.1724.0_neutral_~_8wekyb3d8bbwe
+echo Removing PowerAutomate...
+dism /image:%SCR% /Remove-ProvisionedAppxPackage /PackageName:Microsoft.PowerAutomateDesktop_10.0.3735.0_neutral_~_8wekyb3d8bbwe
+echo Removing ToDo...
+dism /image:%SCR% /Remove-ProvisionedAppxPackage /PackageName:Microsoft.Todos_2.54.42772.0_neutral_~_8wekyb3d8bbwe
+echo Removing Alarms...
+dism /image:%SCR% /Remove-ProvisionedAppxPackage /PackageName:Microsoft.WindowsAlarms_2022.2202.24.0_neutral_~_8wekyb3d8bbwe
+echo Removing Mail...
+dism /image:%SCR% /Remove-ProvisionedAppxPackage /PackageName:microsoft.windowscommunicationsapps_16005.14326.20544.0_neutral_~_8wekyb3d8bbwe
+echo Removing Feedback Hub...
+dism /image:%SCR% /Remove-ProvisionedAppxPackage /PackageName:Microsoft.WindowsFeedbackHub_2022.106.2230.0_neutral_~_8wekyb3d8bbwe
+echo Removing Maps...
+dism /image:%SCR% /Remove-ProvisionedAppxPackage /PackageName:Microsoft.WindowsMaps_2022.2202.6.0_neutral_~_8wekyb3d8bbwe
+echo Removing Sound Recorder...
+dism /image:%SCR% /Remove-ProvisionedAppxPackage /PackageName:Microsoft.WindowsSoundRecorder_2021.2103.28.0_neutral_~_8wekyb3d8bbwe
+echo Removing XboxTCUI...
+dism /image:%SCR% /Remove-ProvisionedAppxPackage /PackageName:Microsoft.Xbox.TCUI_1.23.28004.0_neutral_~_8wekyb3d8bbwe
+echo Removing XboxGamingOverlay...
+dism /image:%SCR% /Remove-ProvisionedAppxPackage /PackageName:Microsoft.XboxGamingOverlay_2.622.3232.0_neutral_~_8wekyb3d8bbwe
+echo Removing XboxGameOverlay...
+dism /image:%SCR% /Remove-ProvisionedAppxPackage /PackageName:Microsoft.XboxGameOverlay_1.47.2385.0_neutral_~_8wekyb3d8bbwe
+echo Removing XboxSpeechToTextOverlay...
+dism /image:%SCR% /Remove-ProvisionedAppxPackage /PackageName:Microsoft.XboxSpeechToTextOverlay_1.17.29001.0_neutral_~_8wekyb3d8bbwe
+echo Removing Your Phone...
+dism /image:%SCR% /Remove-ProvisionedAppxPackage /PackageName:Microsoft.YourPhone_1.22022.147.0_neutral_~_8wekyb3d8bbwe
+echo Removing Music...
+dism /image:%SCR% /Remove-ProvisionedAppxPackage /PackageName:Microsoft.ZuneMusic_11.2202.46.0_neutral_~_8wekyb3d8bbwe
+echo Removing Video...
+dism /image:%SCR% /Remove-ProvisionedAppxPackage /PackageName:Microsoft.ZuneVideo_2019.22020.10021.0_neutral_~_8wekyb3d8bbwe
+echo Removing Family...
+dism /image:%SCR% /Remove-ProvisionedAppxPackage /PackageName:MicrosoftCorporationII.MicrosoftFamily_2022.507.447.0_neutral_~_8wekyb3d8bbwe
+echo Removing QuickAssist...
+dism /image:%SCR% /Remove-ProvisionedAppxPackage /PackageName:MicrosoftCorporationII.QuickAssist_2022.414.1758.0_neutral_~_8wekyb3d8bbwe
+echo Removing Teams...
+dism /image:%SCR% /Remove-ProvisionedAppxPackage /PackageName:MicrosoftTeams_23002.403.1788.1930_x64__8wekyb3d8bbwe
+echo Removing Cortana...
+dism /image:%SCR% /Remove-ProvisionedAppxPackage /PackageName:Microsoft.549981C3F5F10_4.2204.13303.0_neutral_~_8wekyb3d8bbwe
+echo Now proceeding to removal of system packages...
+timeout /t 1 /nobreak > nul
+echo Removing Internet Explorer...
+dism /image:%SCR% /Remove-Package /PackageName:Microsoft-Windows-InternetExplorer-Optional-Package~31bf3856ad364e35~amd64~en-US~11.0.22621.1 > nul
+dism /image:%SCR% /Remove-Package /PackageName:Microsoft-Windows-InternetExplorer-Optional-Package~31bf3856ad364e35~amd64~~11.0.22621.525 > nul
+echo Removing LA57:
+dism /image:%SCR% /Remove-Package /PackageName:Microsoft-Windows-Kernel-LA57-FoD-Package~31bf3856ad364e35~amd64~~10.0.22621.525 > nul
+echo Removing Handwriting:
+dism /image:%SCR% /Remove-Package /PackageName:Microsoft-Windows-LanguageFeatures-Handwriting-en-us-Package~31bf3856ad364e35~amd64~~10.0.22621.525 > nul
+echo Removing OCR:
+dism /image:%SCR% /Remove-Package /PackageName:Microsoft-Windows-LanguageFeatures-OCR-en-us-Package~31bf3856ad364e35~amd64~~10.0.22621.525 > nul
+echo Removing Speech:
+dism /image:%SCR% /Remove-Package /PackageName:Microsoft-Windows-LanguageFeatures-Speech-en-us-Package~31bf3856ad364e35~amd64~~10.0.22621.525 > nul
+echo Removing TTS:
+dism /image:%SCR% /Remove-Package /PackageName:Microsoft-Windows-LanguageFeatures-TextToSpeech-en-us-Package~31bf3856ad364e35~amd64~~10.0.22621.525 > nul
+echo Removing Media Player Legacy:
+dism /image:%SCR% /Remove-Package /PackageName:Microsoft-Windows-MediaPlayer-Package~31bf3856ad364e35~amd64~~10.0.22621.525 > nul
+dism /image:%SCR% /Remove-Package /PackageName:Microsoft-Windows-MediaPlayer-Package~31bf3856ad364e35~wow64~en-US~10.0.22621.1 > nul
+dism /image:%SCR% /Remove-Package /PackageName:Microsoft-Windows-MediaPlayer-Package~31bf3856ad364e35~amd64~~10.0.22621.525 > nul
+dism /image:%SCR% /Remove-Package /PackageName:Microsoft-Windows-MediaPlayer-Package~31bf3856ad364e35~wow64~~10.0.22621.1 > nul
+echo Removing Tablet PC Math:
+dism /image:%SCR% /Remove-Package /PackageName:Microsoft-Windows-TabletPCMath-Package~31bf3856ad364e35~amd64~~10.0.22621.525 > nul
+echo Removing Wallpapers:
+dism /image:%SCR% /Remove-Package /PackageName:Microsoft-Windows-Wallpaper-Content-Extended-FoD-Package~31bf3856ad364e35~amd64~~10.0.22621.525 > nul
+```
+
+清洗注册表
+
+```batch
+reg load HKLM\zCOMPONENTS "%SCR%\Windows\System32\config\COMPONENTS" >nul
+reg load HKLM\zDEFAULT "%SCR%\Windows\System32\config\default" >nul
+reg load HKLM\zNTUSER "%SCR%\Users\Default\ntuser.dat" >nul
+reg load HKLM\zSOFTWARE "%SCR%\Windows\System32\config\SOFTWARE" >nul
+reg load HKLM\zSYSTEM "%SCR%\Windows\System32\config\SYSTEM" >nul
+echo Bypassing system requirements(on the system image):
+Reg add "HKLM\zDEFAULT\Control Panel\UnsupportedHardwareNotificationCache" /v "SV1" /t REG_DWORD /d "0" /f >nul 2>&1
+Reg add "HKLM\zDEFAULT\Control Panel\UnsupportedHardwareNotificationCache" /v "SV2" /t REG_DWORD /d "0" /f >nul 2>&1
+Reg add "HKLM\zNTUSER\Control Panel\UnsupportedHardwareNotificationCache" /v "SV1" /t REG_DWORD /d "0" /f >nul 2>&1
+Reg add "HKLM\zNTUSER\Control Panel\UnsupportedHardwareNotificationCache" /v "SV2" /t REG_DWORD /d "0" /f >nul 2>&1
+Reg add "HKLM\zSYSTEM\Setup\LabConfig" /v "BypassCPUCheck" /t REG_DWORD /d "1" /f >nul 2>&1
+Reg add "HKLM\zSYSTEM\Setup\LabConfig" /v "BypassRAMCheck" /t REG_DWORD /d "1" /f >nul 2>&1
+Reg add "HKLM\zSYSTEM\Setup\LabConfig" /v "BypassSecureBootCheck" /t REG_DWORD /d "1" /f >nul 2>&1
+Reg add "HKLM\zSYSTEM\Setup\LabConfig" /v "BypassStorageCheck" /t REG_DWORD /d "1" /f >nul 2>&1
+Reg add "HKLM\zSYSTEM\Setup\LabConfig" /v "BypassTPMCheck" /t REG_DWORD /d "1" /f >nul 2>&1
+Reg add "HKLM\zSYSTEM\Setup\MoSetup" /v "AllowUpgradesWithUnsupportedTPMOrCPU" /t REG_DWORD /d "1" /f >nul 2>&1
+echo Disabling Teams:
+Reg add "HKLM\zSOFTWARE\Microsoft\Windows\CurrentVersion\Communications" /v "ConfigureChatAutoInstall" /t REG_DWORD /d "0" /f >nul 2>&1
+echo Disabling Sponsored Apps:
+Reg add "HKLM\zNTUSER\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "OemPreInstalledAppsEnabled" /t REG_DWORD /d "0" /f >nul 2>&1
+Reg add "HKLM\zNTUSER\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "PreInstalledAppsEnabled" /t REG_DWORD /d "0" /f >nul 2>&1
+Reg add "HKLM\zNTUSER\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "SilentInstalledAppsEnabled" /t REG_DWORD /d "0" /f >nul 2>&1
+Reg add "HKLM\zSOFTWARE\Policies\Microsoft\Windows\CloudContent" /v "DisableWindowsConsumerFeatures" /t REG_DWORD /d "1" /f >nul 2>&1
+Reg add "HKLM\zSOFTWARE\Microsoft\PolicyManager\current\device\Start" /v "ConfigureStartPins" /t REG_SZ /d "{\"pinnedList\": [{}]}" /f >nul 2>&1
+echo Enabling Local Accounts on OOBE:
+Reg add "HKLM\zSOFTWARE\Microsoft\Windows\CurrentVersion\OOBE" /v "BypassNRO" /t REG_DWORD /d "1" /f >nul 2>&1
+echo Disabling Reserved Storage:
+Reg add "HKLM\zSOFTWARE\Microsoft\Windows\CurrentVersion\ReserveManager" /v "ShippedWithReserves" /t REG_DWORD /d "0" /f >nul 2>&1
+echo Disabling Chat icon:
+Reg add "HKLM\zSOFTWARE\Policies\Microsoft\Windows\Windows Chat" /v "ChatIcon" /t REG_DWORD /d "3" /f >nul 2>&1
+Reg add "HKLM\zNTUSER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "TaskbarMn" /t REG_DWORD /d "0" /f >nul 2>&1
+echo Unmounting Registry...
+reg unload HKLM\zCOMPONENTS >nul 2>&1
+reg unload HKLM\zDRIVERS >nul 2>&1
+reg unload HKLM\zDEFAULT >nul 2>&1
+reg unload HKLM\zNTUSER >nul 2>&1
+reg unload HKLM\zSCHEMA >nul 2>&1
+reg unload HKLM\zSOFTWARE >nul 2>&1
+reg unload HKLM\zSYSTEM >nul 2>&1
+```
+
+做Cleanup操作
+
+`dism /image:%SCR% /Cleanup-Image /StartComponentCleanup /ResetBase`
+
+卸载并保存镜像
+
+`dism /unmount-image /mountdir:%SCR% /commit`
+
+如果是ESD转换来的WIM，就转换回ESD
+
+`dism /Export-Image /SourceImageFile:%MNT%\sources\install-src.wim /SourceIndex:1 /DestinationImageFile:%MNT%\sources\install.esd /compress:recovery /CheckIntegrity`
+
+否则就使用WIM，可以重新压缩
+
+`ren %MNT%\sources\install.wim install-src.wim`
+
+`Dism /Export-Image /SourceImageFile:%MNT%\sources\install-src.wim /SourceIndex:%安装的版本的序号% /DestinationImageFile:%MNT%\sources\install.wim /compress:max`
+
+删除临时文件
+
+`del %MNT%\Sources\install-src.wim`
+
+### 清洗Boot镜像和安装配置
+
+`dism /mount-image /imagefile:%MNT%\sources\boot.wim /index:2 /mountdir:%SCR%`
+
+清洗注册表
+
+```batch
+reg load HKLM\zCOMPONENTS "%SCR%\Windows\System32\config\COMPONENTS" >nul
+reg load HKLM\zDEFAULT "%SCR%\Windows\System32\config\default" >nul
+reg load HKLM\zNTUSER "%SCR%\Users\Default\ntuser.dat" >nul
+reg load HKLM\zSOFTWARE "%SCR%\Windows\System32\config\SOFTWARE" >nul
+reg load HKLM\zSYSTEM "%SCR%\Windows\System32\config\SYSTEM" >nul
+echo Bypassing system requirements(on the setup image):
+Reg add "HKLM\zDEFAULT\Control Panel\UnsupportedHardwareNotificationCache" /v "SV1" /t REG_DWORD /d "0" /f >nul 2>&1
+Reg add "HKLM\zDEFAULT\Control Panel\UnsupportedHardwareNotificationCache" /v "SV2" /t REG_DWORD /d "0" /f >nul 2>&1
+Reg add "HKLM\zNTUSER\Control Panel\UnsupportedHardwareNotificationCache" /v "SV1" /t REG_DWORD /d "0" /f >nul 2>&1
+Reg add "HKLM\zNTUSER\Control Panel\UnsupportedHardwareNotificationCache" /v "SV2" /t REG_DWORD /d "0" /f >nul 2>&1
+Reg add "HKLM\zSYSTEM\Setup\LabConfig" /v "BypassCPUCheck" /t REG_DWORD /d "1" /f >nul 2>&1
+Reg add "HKLM\zSYSTEM\Setup\LabConfig" /v "BypassRAMCheck" /t REG_DWORD /d "1" /f >nul 2>&1
+Reg add "HKLM\zSYSTEM\Setup\LabConfig" /v "BypassSecureBootCheck" /t REG_DWORD /d "1" /f >nul 2>&1
+Reg add "HKLM\zSYSTEM\Setup\LabConfig" /v "BypassStorageCheck" /t REG_DWORD /d "1" /f >nul 2>&1
+Reg add "HKLM\zSYSTEM\Setup\LabConfig" /v "BypassTPMCheck" /t REG_DWORD /d "1" /f >nul 2>&1
+Reg add "HKLM\zSYSTEM\Setup\MoSetup" /v "AllowUpgradesWithUnsupportedTPMOrCPU" /t REG_DWORD /d "1" /f >nul 2>&1
+echo Unmounting Registry...
+reg unload HKLM\zCOMPONENTS >nul 2>&1
+reg unload HKLM\zDRIVERS >nul 2>&1
+reg unload HKLM\zDEFAULT >nul 2>&1
+reg unload HKLM\zNTUSER >nul 2>&1
+reg unload HKLM\zSCHEMA >nul 2>&1
+reg unload HKLM\zSOFTWARE >nul 2>&1
+reg unload HKLM\zSYSTEM >nul 2>&1
+```
+
+卸载并保存镜像
+
+`dism /unmount-image /mountdir:%SCR% /commit`
+
+### 打包干净的安装镜像
+
+`oscdimg.exe -m -o -u2 -udfver102 -bootdata:2#p0,e,b%MNT%\boot\etfsboot.com#pEF,e,b%MNT%\efi\microsoft\boot\efisys.bin %MNT% Windows11-clean.iso`
+
+### 清理临时文件
+
+rd %MNT% /s /q 
+rd %SCR% /s /q 
