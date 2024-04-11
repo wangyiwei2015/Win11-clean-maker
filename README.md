@@ -1,6 +1,14 @@
-用Media Creation Tool下载官方安装镜像
+如果你已经安装了 Windows，也无需重新安装，[看这里](#WHAT-IF)
 
-挂载官方镜像ISO文件
+## 纯净安装盘制作步骤
+
+注意要用 CMD 而不是 PowerShell
+
+首先用`Media Creation Tool`下载官方安装镜像
+
+[Windows 11](https://www.microsoft.com/zh-cn/software-download/windows11)  or  [Windows 10](https://www.microsoft.com/zh-cn/software-download/windows10)
+
+右键挂载官方镜像 ISO 文件
 
 ### 准备工作
 
@@ -18,31 +26,31 @@
 
 `xcopy.exe /E /I /H /R /Y /J %挂载的镜像分区:% c:\tiny11 >nul`
 
-### 挂载WIM用于清理
+### 挂载 WIM 用于清理
 
-查看WIM信息
+查看 WIM 信息
 
 `dism /Get-WimInfo /wimfile:%MNT%\sources\install.wim`
 
 `dism /mount-image /imagefile:%MNT%\sources\install.wim /index:%安装的版本的序号% /mountdir:%SCR%`
 
-如果不存在，则可能是ESD，需要转换
+如果不存在，则可能是 ESD，需要转换
 
-查看ESD信息
+查看 ESD 信息
 
 `dism /Get-WimInfo /wimfile:%MNT%\sources\install.esd`
 
-转换为WIM
+转换为 WIM
 
 `dism /Export-Image /SourceImageFile:%MNT%\sources\install.esd /SourceIndex:%安装的版本的序号% /DestinationImageFile:%MNT%\sources\install-src.wim /Compress:Max /CheckIntegrity`
 
-检查转换后的WIM
+检查转换后的 WIM
 
 `dism /Get-WimInfo /wimfile:%MNT%\sources\install-src.wim`
 
 `dism /mount-image /imagefile:%MNT%\sources\install-src.wim /index:1 /mountdir:%SCR%`
 
-### 清洗WIM安装镜像
+### 清洗 WIM 安装镜像
 
 获取预安装的软件包列表
 
@@ -177,7 +185,7 @@ reg unload HKLM\zSOFTWARE >nul 2>&1
 reg unload HKLM\zSYSTEM >nul 2>&1
 ```
 
-做Cleanup操作
+做 Cleanup 操作
 
 `dism /image:%SCR% /Cleanup-Image /StartComponentCleanup /ResetBase`
 
@@ -185,21 +193,21 @@ reg unload HKLM\zSYSTEM >nul 2>&1
 
 `dism /unmount-image /mountdir:%SCR% /commit`
 
-如果是ESD转换来的WIM，就转换回ESD
+如果是 ESD 转换来的 WIM，就转换回 ESD
 
 `dism /Export-Image /SourceImageFile:%MNT%\sources\install-src.wim /SourceIndex:1 /DestinationImageFile:%MNT%\sources\install.esd /compress:recovery /CheckIntegrity`
 
-否则就使用WIM，可以重新压缩
+否则就使用 WIM，可以重新压缩
 
 `ren %MNT%\sources\install.wim install-src.wim`
 
-`Dism /Export-Image /SourceImageFile:%MNT%\sources\install-src.wim /SourceIndex:%安装的版本的序号% /DestinationImageFile:%MNT%\sources\install.wim /compress:max`
+`dism /Export-Image /SourceImageFile:%MNT%\sources\install-src.wim /SourceIndex:%安装的版本的序号% /DestinationImageFile:%MNT%\sources\install.wim /compress:max`
 
 删除临时文件
 
 `del %MNT%\Sources\install-src.wim`
 
-### 清洗Boot镜像和安装配置
+### 清洗 Boot 镜像和安装配置
 
 `dism /mount-image /imagefile:%MNT%\sources\boot.wim /index:2 /mountdir:%SCR%`
 
@@ -238,10 +246,23 @@ reg unload HKLM\zSYSTEM >nul 2>&1
 
 ### 打包干净的安装镜像
 
+导出 ISO 文件，注意最后是输出位置
+
 `oscdimg.exe -m -o -u2 -udfver102 -bootdata:2#p0,e,b%MNT%\boot\etfsboot.com#pEF,e,b%MNT%\efi\microsoft\boot\efisys.bin %MNT% Windows11-clean.iso`
 
 ### 清理临时文件
 
 `rd %MNT% /s /q`
-
 `rd %SCR% /s /q`
+
+## WHAT-IF
+
+已经安装了官方版？
+
+查看本机安装的 Appx 包
+
+`dism /Online /Get-Packages`
+
+删除不需要的软件包
+
+`dism /Online /Remove-ProvisionedAppxPackage /PackageName:[APPX name]`
