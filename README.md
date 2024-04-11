@@ -242,5 +242,6 @@ reg unload HKLM\zSYSTEM >nul 2>&1
 
 ### 清理临时文件
 
-rd %MNT% /s /q 
-rd %SCR% /s /q 
+`rd %MNT% /s /q`
+
+`rd %SCR% /s /q`
